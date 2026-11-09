@@ -121,3 +121,17 @@ export function setCaptainVerification(state: DemoState, captainId: string, stat
   if(!state.captains.some(c=>c.id===captainId)) throw new Error("Captain not found");
   return record({...state,captains:state.captains.map(c=>c.id===captainId?{...c,status,online:status==="verified"&&c.online}:c)},`${captainId}: verification ${status}`);
 }
+
+/** Demo-only Captain availability; does not update GPS or authenticate identity. */
+export function setCaptainOnline(state: DemoState, captainId: string, online: boolean): DemoState {
+  const captain = state.captains.find(c => c.id === captainId);
+  if (!captain) throw new Error("Captain not found");
+  if (online && captain.status !== "verified") throw new Error("Captain must be verified to go online");
+  if (!online && state.bookings.some(b => b.captainId === captainId &&
+    ["matched", "arrived", "in_progress"].includes(b.status))) {
+    throw new Error("Complete the active trip before going offline");
+  }
+  return record({...state, captains: state.captains.map(c =>
+    c.id === captainId ? {...c, online} : c)},
+    `${captainId} went ${online ? "online" : "offline"}`);
+}
