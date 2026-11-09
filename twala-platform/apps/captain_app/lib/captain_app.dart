@@ -58,14 +58,15 @@ class _CaptainAppState extends State<CaptainApp> {
         (b['paymentMethod'] == 'cash'
           ? currentCaptain?['cashEligible'] == true
           : currentCaptain?['cashlessEligible'] == true)).firstOrNull;
-      final booking = assigned ?? (online && currentCaptain?['status'] == 'verified'
+      final booking = assigned ?? (currentCaptain?['online'] == true && currentCaptain?['status'] == 'verified'
         ? available : null);
       setState(() {
         captain = currentCaptain;
+        online = currentCaptain?['online'] == true;
         activeBooking = booking;
         error = null;
         if (booking == null) {
-          stage = online ? CaptainTripStage.request : CaptainTripStage.offline;
+          stage = currentCaptain?['online'] == true ? CaptainTripStage.request : CaptainTripStage.offline;
         } else {
           stage = switch (booking['status']) {
             'matched' => CaptainTripStage.pickup,
@@ -81,16 +82,29 @@ class _CaptainAppState extends State<CaptainApp> {
   }
 
   void setOnline(bool value) {
-    setState(() {
-      online = value;
-      stage = value ? CaptainTripStage.request : CaptainTripStage.offline;
-    });
-    unawaited(refresh());
+    unawaited(_setOnline(value));
+  }
+
+  Future<void> _setOnline(bool value) async {
+    if (busy) return;
+    setState(() => busy = true);
+    try {
+      await api.action({
+        'action': 'set_captain_online',
+        'captainId': captainId,
+        'online': value,
+      });
+      await refresh();
+    } catch (e) {
+      if (mounted) setState(() => error = 'Availability update failed: $e');
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
   }
 
   Future<void> advance() async {
     final booking = activeBooking;
-    if (booking == null || busy) return;
+    if (booking == null || busy || !online) return;
     final status = booking['status']?.toString();
     if (status != 'searching' &&
         status != 'matched' &&
@@ -127,7 +141,7 @@ class _CaptainAppState extends State<CaptainApp> {
             stage: stage,
             booking: activeBooking,
             busy: busy,
-            onOnlineChanged: setOnline,
+            onOnlineChanged: busy ? (_) {} : setOnline,
             onAdvance: () => unawaited(advance()),
           ),
           const EarningsPage(),
