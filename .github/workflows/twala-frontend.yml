@@ -15,9 +15,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: npm
-          cache-dependency-path: twala-platform/apps/operations_dashboard/package-lock.json
-      - run: npm ci
+      - name: Install dashboard dependencies
+        run: npm install --no-audit --no-fund
       - name: Demo engine tests
         run: node --experimental-strip-types --test src/lib/demo-engine.test.mts
       - name: Typecheck
