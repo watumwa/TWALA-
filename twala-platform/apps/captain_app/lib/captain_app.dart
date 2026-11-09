@@ -103,7 +103,9 @@ class _CaptainAppState extends State<CaptainApp> {
     } catch (e) {
       if (mounted) setState(() => error = 'Availability update failed: $e');
     } finally {
-      if (mounted) setState(() => busy = false);
+      if (mounted) {
+        setState(() => busy = false);
+      }
     }
   }
 
