@@ -14,6 +14,7 @@ class CustomerApp extends StatefulWidget {
 class _CustomerAppState extends State<CustomerApp> {
   int tab = 0;
   RideService? booking;
+  bool directPairing = false;
   final TwalaDemoApi activityApi = TwalaDemoApi();
   Timer? activityTimer;
   List<Map<String, dynamic>> activityBookings = [];
@@ -59,12 +60,12 @@ class _CustomerAppState extends State<CustomerApp> {
         Expanded(
           child: booking == null
               ? IndexedStack(index: tab, children: [
-                  HomePage(onBook: (value) => setState(() => booking = value)),
+                  HomePage(onBook: (value) => setState(() { booking = value; directPairing = false; }), onDirectPair: () => setState(() { booking = RideService.boda; directPairing = true; })),
                   ActivityPage(bookings: activityBookings, error: activityError, onRefresh: () => unawaited(refreshActivity())),
                   const WalletPage(),
                   const AccountPage(),
                 ])
-              : BookingPage(initialService: booking!, onClose: () => setState(() => booking = null)),
+              : BookingPage(initialService: booking!, directPairing: directPairing, onClose: () => setState(() => booking = null)),
         ),
       ]),
       bottomNavigationBar: booking == null
@@ -86,8 +87,9 @@ class _CustomerAppState extends State<CustomerApp> {
 }
 
 class HomePage extends StatelessWidget {
-  const HomePage({super.key, required this.onBook});
+  const HomePage({super.key, required this.onBook, required this.onDirectPair});
   final ValueChanged<RideService> onBook;
+  final VoidCallback onDirectPair;
 
   @override
   Widget build(BuildContext context) {
@@ -125,9 +127,9 @@ class HomePage extends StatelessWidget {
           const TwalaSectionHeader(title: 'Quick ways to book'),
           const SizedBox(height: 12),
           Card(child: Column(children: [
-            ActionTile(icon: Icons.tag, title: 'Enter Captain ID', subtitle: 'Pair with a verified Captain nearby', onTap: () => onBook(RideService.boda)),
+            ActionTile(icon: Icons.tag, title: 'Enter Captain ID', subtitle: 'Pair with a verified Captain nearby', onTap: onDirectPair),
             const Divider(height: 1, indent: 70),
-            ActionTile(icon: Icons.qr_code_scanner, title: 'Scan Captain QR', subtitle: 'Scan approved TWALA identification', onTap: () => onBook(RideService.boda)),
+            ActionTile(icon: Icons.qr_code_scanner, title: 'Scan Captain QR', subtitle: 'Camera scanner not available in this demo; enter Captain ID instead', onTap: onDirectPair),
           ])),
           const SizedBox(height: 22),
           Container(
@@ -176,7 +178,8 @@ class RideCard extends StatelessWidget {
 }
 
 class BookingPage extends StatefulWidget {
-  const BookingPage({super.key, required this.initialService, required this.onClose});
+  const BookingPage({super.key, required this.initialService, required this.onClose, this.directPairing = false});
+  final bool directPairing;
   final RideService initialService;
   final VoidCallback onClose;
 
@@ -195,10 +198,16 @@ class _BookingPageState extends State<BookingPage> {
   bool cancelled = false;
   String? bookingError;
   bool submitting = false;
+  final pickupController = TextEditingController(text: 'Hoima City Mall, Main Street');
+  final destinationController = TextEditingController(text: 'Hoima Regional Referral Hospital');
+  final captainIdController = TextEditingController();
 
   @override
   void dispose() {
     bookingPoll?.cancel();
+    pickupController.dispose();
+    destinationController.dispose();
+    captainIdController.dispose();
     demoApi.close();
     super.dispose();
   }
@@ -209,11 +218,13 @@ class _BookingPageState extends State<BookingPage> {
     try {
       final result = await demoApi.createBooking(
         passenger: 'Amina (Demo)',
-        pickup: 'Hoima City Mall, Main Street',
-        destination: 'Hoima Regional Referral Hospital',
+        pickup: pickupController.text.trim(),
+        destination: destinationController.text.trim(),
         service: service.name,
         paymentMethod: payment.name,
         fare: service.estimate,
+        pairing: widget.directPairing ? 'id' : 'standard',
+        requestedCaptainId: widget.directPairing ? captainIdController.text.trim() : null,
       );
       final bookings = (result['state'] as Map<String, dynamic>)['bookings'] as List<dynamic>;
       if (!mounted) return;
@@ -312,7 +323,9 @@ class _BookingPageState extends State<BookingPage> {
 
   void next() {
     if (cancelled) { bookingPoll?.cancel(); widget.onClose(); return; }
-    if (stage == BookingStage.review) { unawaited(createSharedBooking()); return; }
+    if (stage == BookingStage.review) { if (widget.directPairing && captainIdController.text.trim().isEmpty) { setState(() => bookingError = 'Enter a Captain ID for direct pairing.'); return; } unawaited(createSharedBooking()); return; }
+    if (stage == BookingStage.route && (pickupController.text.trim().isEmpty || destinationController.text.trim().isEmpty || pickupController.text.trim() == destinationController.text.trim())) { setState(() => bookingError = 'Enter different pickup and destination locations.'); return; }
+    if (bookingError != null) setState(() => bookingError = null);
     if (sharedBookingId != null && stage.index >= BookingStage.searching.index && stage != BookingStage.complete) { unawaited(refreshSharedBooking()); return; }
     if (stage == BookingStage.complete) return widget.onClose();
     setState(() => stage = BookingStage.values[stage.index + 1]);
@@ -390,7 +403,13 @@ class _BookingPageState extends State<BookingPage> {
   Widget routeStep(BuildContext context) => ListView(key: const ValueKey('route'), padding: const EdgeInsets.fromLTRB(20, 20, 20, 10), children: [
         const TwalaMapCanvas(height: 230, showCaptain: false),
         const SizedBox(height: 17),
-        Card(child: Padding(padding: const EdgeInsets.all(16), child: Column(children: const [LocationLine(icon: Icons.my_location, color: TwalaColors.teal, label: 'Pickup', value: 'Hoima City Mall, Main Street'), Padding(padding: EdgeInsets.only(left: 18), child: Divider(height: 24)), LocationLine(icon: Icons.location_on, color: TwalaColors.orange, label: 'Destination', value: 'Hoima Regional Referral Hospital')]))),
+        Card(child: Padding(padding: const EdgeInsets.all(16), child: Column(children: [
+          TextField(controller: pickupController, decoration: const InputDecoration(labelText: 'Pickup location', prefixIcon: Icon(Icons.my_location))),
+          const SizedBox(height: 12),
+          TextField(controller: destinationController, decoration: const InputDecoration(labelText: 'Destination', prefixIcon: Icon(Icons.location_on))),
+          const SizedBox(height: 8),
+          const Text('Demo text entry only • No live maps or geocoding', style: TextStyle(color: TwalaColors.muted)),
+        ]))),
         const SizedBox(height: 17),
         SegmentedButton<RideService>(segments: const [ButtonSegment(value: RideService.boda, icon: Icon(Icons.two_wheeler), label: Text('Boda-boda')), ButtonSegment(value: RideService.car, icon: Icon(Icons.directions_car), label: Text('Car'))], selected: {service}, onSelectionChanged: (value) => setState(() => service = value.first), showSelectedIcon: false),
       ]);
@@ -408,6 +427,11 @@ class _BookingPageState extends State<BookingPage> {
         const TwalaMapCanvas(height: 190, showCaptain: false),
         const SizedBox(height: 17),
         Card(child: Padding(padding: const EdgeInsets.all(18), child: Column(children: [SummaryLine(icon: service == RideService.boda ? Icons.two_wheeler : Icons.directions_car, label: 'Service', value: service.label), const Divider(height: 28), const SummaryLine(icon: Icons.route, label: 'Trip', value: '5.8 km • about 18 min'), const Divider(height: 28), SummaryLine(icon: Icons.payments_outlined, label: 'Payment', value: payment.label), const Divider(height: 28), SummaryLine(icon: Icons.receipt_long_outlined, label: 'Estimated fare', value: formatUgx(service.estimate), strong: true)]))),
+        if (widget.directPairing) ...[
+          const SizedBox(height: 12),
+          TextField(controller: captainIdController, textCapitalization: TextCapitalization.characters,
+            decoration: const InputDecoration(labelText: 'Verified Captain ID', hintText: 'TW-HOI-0241', prefixIcon: Icon(Icons.badge_outlined))),
+        ],
         const SizedBox(height: 12),
         Text('Final fare may change with actual time, distance, or an approved destination change.', textAlign: TextAlign.center, style: Theme.of(context).textTheme.bodyMedium),
       ]);
