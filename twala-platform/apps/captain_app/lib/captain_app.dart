@@ -254,7 +254,7 @@ class TripControl extends StatelessWidget {
     final request = stage == CaptainTripStage.request;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       if (request) ...[
-        Row(children: [const TwalaStatusPill(label: '18 sec to respond', icon: Icons.timer_outlined, background: TwalaColors.orangeSoft, foreground: TwalaColors.orangeDark), const Spacer(), Text(formatUgx((booking['fare'] as num).toInt()), style: Theme.of(context).textTheme.titleLarge)]),
+        Row(children: [const TwalaStatusPill(label: 'Demo request', icon: Icons.notifications_active_outlined, background: TwalaColors.orangeSoft, foreground: TwalaColors.orangeDark), const Spacer(), Text(formatUgx((booking['fare'] as num).toInt()), style: Theme.of(context).textTheme.titleLarge)]),
         const SizedBox(height: 18),
       ],
       Row(crossAxisAlignment: CrossAxisAlignment.start, children: [const Icon(Icons.my_location, color: TwalaColors.teal), const SizedBox(width: 11), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text('PICKUP', style: TextStyle(color: TwalaColors.muted, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: .8)), const SizedBox(height: 3), Text(booking['pickup'].toString(), style: Theme.of(context).textTheme.titleMedium), Text('Passenger: ${booking['passenger']} • Demo')]))]),
@@ -262,7 +262,7 @@ class TripControl extends StatelessWidget {
       Row(crossAxisAlignment: CrossAxisAlignment.start, children: [const Icon(Icons.location_on, color: TwalaColors.orange), const SizedBox(width: 11), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text('DESTINATION', style: TextStyle(color: TwalaColors.muted, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: .8)), const SizedBox(height: 3), Text(booking['destination'].toString(), style: Theme.of(context).textTheme.titleMedium), Text('Payment: ${booking['paymentMethod']} • Demo')]))]),
       const SizedBox(height: 18),
       if (request)
-        Row(children: [Expanded(child: OutlinedButton(onPressed: () {}, child: const Text('Reject'))), const SizedBox(width: 10), Expanded(flex: 2, child: FilledButton(key: const Key('captain-advance'), onPressed: busy ? null : onAdvance, child: const Text('Accept ride')))])
+        FilledButton(key: const Key('captain-advance'), onPressed: busy ? null : onAdvance, child: const Text('Accept ride'))
       else
         FilledButton(key: const Key('captain-advance'), onPressed: busy ? null : onAdvance, child: Text(switch (stage) { CaptainTripStage.pickup => 'I have arrived', CaptainTripStage.arrived => 'Verify and start trip', CaptainTripStage.active => 'Complete demo trip', _ => 'Continue' })),
     ]);
