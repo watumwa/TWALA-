@@ -58,9 +58,9 @@ class _CaptainAppState extends State<CaptainApp> {
         b['status'] == 'searching' &&
         b['service'] == 'boda' &&
         (b['pairing'] == 'standard' || b['requestedCaptainId'] == captainId) &&
-        (b['paymentMethod'] == 'cash'
-          ? currentCaptain?['cashEligible'] == true
-          : currentCaptain?['cashlessEligible'] == true)).firstOrNull;
+        (currentCaptain != null && (b['paymentMethod'] == 'cash'
+          ? currentCaptain['cashEligible'] == true
+          : currentCaptain['cashlessEligible'] == true))).firstOrNull;
       final booking = assigned ?? (currentCaptain?['online'] == true && currentCaptain?['status'] == 'verified'
         ? available : null);
       setState(() {
