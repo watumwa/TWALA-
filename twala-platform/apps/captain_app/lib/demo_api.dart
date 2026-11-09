@@ -37,8 +37,7 @@ class TwalaDemoApi {
         'paymentMethod': paymentMethod,
         'fare': fare,
         'pairing': pairing,
-        if (requestedCaptainId != null)
-          'requestedCaptainId': requestedCaptainId,
+        'requestedCaptainId': ?requestedCaptainId,
       });
 
   Future<Map<String, dynamic>> acceptBooking(
