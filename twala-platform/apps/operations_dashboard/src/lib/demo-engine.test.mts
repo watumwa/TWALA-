@@ -1,7 +1,8 @@
 import test from "node:test";
+import type {DemoState} from "./demo-engine.ts";
 import assert from "node:assert/strict";
 import {initialDemoState,createBooking,acceptBooking,advanceBooking,confirmDeposit,requestWithdrawal,resolveWithdrawal,eligibleCaptain} from "./demo-engine.ts";
-const booking=(state,extra={})=>createBooking(state,{passenger:"Demo Passenger",pickup:"Hoima Market",destination:"Hospital",service:"boda",paymentMethod:"cash",fare:10000,pairing:"standard",...extra});
+const booking=(state:DemoState,extra:Record<string,unknown>={})=>createBooking(state,{passenger:"Demo Passenger",pickup:"Hoima Market",destination:"Hospital",service:"boda",paymentMethod:"cash",fare:10000,pairing:"standard",...extra});
 test("payment selected before matching and captain acceptance required",()=>{
  let s=booking(initialDemoState());
  assert.equal(s.bookings[0].status,"searching");
