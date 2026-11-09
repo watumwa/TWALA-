@@ -56,6 +56,12 @@ export function eligibleCaptain(captain: Captain, service: RideService, payment:
 export function createBooking(state: DemoState, input: Omit<Booking,"id"|"status"|"captainId"|"createdAt">): DemoState {
   if (!Number.isSafeInteger(input.fare) || input.fare <= 0) throw new Error("Fare must be a positive integer in UGX");
   if (!input.passenger.trim() || !input.pickup.trim() || !input.destination.trim()) throw new Error("Passenger and route are required");
+  if (input.pickup.trim().toLowerCase() === input.destination.trim().toLowerCase()) {
+    throw new Error("Pickup and destination must be different");
+  }
+  if (input.pickup.length > 200 || input.destination.length > 200 || input.passenger.length > 120) {
+    throw new Error("Passenger or route text is too long");
+  }
   if(input.pairing!=="standard") {
     const requestedId = input.requestedCaptainId?.trim();
     if (!requestedId) throw new Error("Captain ID required for direct pairing");
@@ -63,6 +69,9 @@ export function createBooking(state: DemoState, input: Omit<Booking,"id"|"status
     if (!requested) throw new Error("Captain ID not found");
     if (!eligibleCaptain(requested, input.service, input.paymentMethod)) {
       throw new Error("Selected Captain is not available or eligible for this booking");
+    }
+    if (state.bookings.some(b => b.captainId === requestedId && ["matched", "arrived", "in_progress"].includes(b.status))) {
+      throw new Error("Selected Captain is already on a trip");
     }
   }
   const booking: Booking = {...input,id:id(state,"TRIP"),status:"searching",captainId:null,createdAt:new Date().toISOString(),pickupCode:String(Math.floor(1000+Math.random()*9000)),pickupVerified:false};
