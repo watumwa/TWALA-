@@ -214,19 +214,19 @@ class CaptainHome extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(20, 18, 20, 26),
         decoration: const BoxDecoration(color: TwalaColors.deepGreen, borderRadius: BorderRadius.vertical(bottom: Radius.circular(34))),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Row(children: [Expanded(child: TwalaWordmark(light: true, compact: true)), TwalaStatusPill(label: 'CAPTAIN APP', background: Color(0xFF29575B), foreground: Colors.white)]),
+          const Row(children: [Expanded(child: TwalaWordmark(light: true, compact: true)), TwalaStatusPill(label: 'CAPTAIN APP', background: Color(0xFF315E3C), foreground: Colors.white)]),
           const SizedBox(height: 27),
           Row(children: [
             const CircleAvatar(radius: 30, backgroundColor: TwalaColors.orange, child: Text('MD', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900))),
             const SizedBox(width: 13),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Mugisa Daniel', style: Theme.of(context).textTheme.titleLarge?.copyWith(color: Colors.white)), const SizedBox(height: 4), const Text('Boda Captain • TW-HOI-0241', style: TextStyle(color: Color(0xFFC5D9D5)))])),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Mugisa Daniel', style: Theme.of(context).textTheme.titleLarge?.copyWith(color: Colors.white)), const SizedBox(height: 4), const Text('Boda Captain • TW-HOI-0241', style: TextStyle(color: Color(0xFFD9E8DC)))])),
             Switch(value: online, onChanged: onOnlineChanged, activeThumbColor: Colors.white, activeTrackColor: TwalaColors.teal),
           ]),
           const SizedBox(height: 17),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(color: online ? const Color(0xFF245F5A) : const Color(0xFF2A4E53), borderRadius: BorderRadius.circular(18)),
-            child: Row(children: [Icon(online ? Icons.radio_button_checked : Icons.pause_circle_outline, color: online ? const Color(0xFF8DE3C9) : Colors.white70), const SizedBox(width: 10), Expanded(child: Text(online ? 'You are online • Demo location active' : 'You are offline • Go online for requests', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)))]),
+            decoration: BoxDecoration(color: online ? const Color(0xFF245D36) : const Color(0xFF303A32), borderRadius: BorderRadius.circular(18)),
+            child: Row(children: [Icon(online ? Icons.radio_button_checked : Icons.pause_circle_outline, color: online ? const Color(0xFFA5E5B8) : Colors.white70), const SizedBox(width: 10), Expanded(child: Text(online ? 'You are online • Demo location active' : 'You are offline • Go online for requests', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)))]),
           ),
         ]),
       ),
@@ -376,7 +376,7 @@ class EarningsPage extends StatelessWidget {
             borderRadius: BorderRadius.circular(27),
           ),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('Available demo wallet', style: TextStyle(color: Color(0xFFC7DBD7))),
+            const Text('Available demo wallet', style: TextStyle(color: Color(0xFFD9E8DC))),
             const SizedBox(height: 7),
             Text(formatUgx(balance), style: Theme.of(context).textTheme.headlineLarge?.copyWith(color: Colors.white)),
             const SizedBox(height: 16),
@@ -506,7 +506,7 @@ class FinanceMetric extends StatelessWidget {
   final String label;
   final String value;
   @override
-  Widget build(BuildContext context) => Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: const Color(0xFF28575C), borderRadius: BorderRadius.circular(16)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(label, style: const TextStyle(color: Color(0xFFC7DBD7), fontSize: 11)), const SizedBox(height: 5), Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800))]));
+  Widget build(BuildContext context) => Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: const Color(0xFF315E3C), borderRadius: BorderRadius.circular(16)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(label, style: const TextStyle(color: Color(0xFFD9E8DC), fontSize: 11)), const SizedBox(height: 5), Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800))]));
 }
 
 class MoneyRow extends StatelessWidget {
