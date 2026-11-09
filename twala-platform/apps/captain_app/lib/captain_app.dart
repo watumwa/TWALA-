@@ -146,6 +146,8 @@ class _CaptainAppState extends State<CaptainApp> {
             stage: stage,
             booking: activeBooking,
             busy: busy,
+            captain: captain,
+            bookings: captainBookings,
             onOnlineChanged: busy ? (_) {} : setOnline,
             onAdvance: () => unawaited(advance()),
           ),
@@ -171,8 +173,10 @@ class _CaptainAppState extends State<CaptainApp> {
 }
 
 class CaptainHome extends StatelessWidget {
-  const CaptainHome({super.key, required this.online, required this.stage, required this.onOnlineChanged, required this.onAdvance, required this.booking, required this.busy});
+  const CaptainHome({super.key, required this.online, required this.stage, required this.onOnlineChanged, required this.onAdvance, required this.booking, required this.busy, required this.captain, required this.bookings});
   final Map<String, dynamic>? booking;
+  final Map<String, dynamic>? captain;
+  final List<Map<String, dynamic>> bookings;
   final bool busy;
   final bool online;
   final CaptainTripStage stage;
@@ -205,9 +209,9 @@ class CaptainHome extends StatelessWidget {
       Padding(
         padding: const EdgeInsets.fromLTRB(20, 22, 20, 30),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [Expanded(child: StatCard(label: 'Today', value: 'UGX 48,600', detail: '6 completed trips', color: TwalaColors.orange)), const SizedBox(width: 11), const Expanded(child: StatCard(label: 'Rating', value: '4.9 ★', detail: '428 total trips', color: TwalaColors.teal))]),
+          Row(children: [Expanded(child: StatCard(label: 'Completed fares', value: formatUgx(bookings.where((b) => b['status'] == 'completed').fold<int>(0, (total, b) => total + (b['fare'] as num).toInt())), detail: '${bookings.where((b) => b['status'] == 'completed').length} completed demo trips', color: TwalaColors.orange)), const SizedBox(width: 11), Expanded(child: StatCard(label: 'Wallet', value: formatUgx((captain?['walletAvailable'] as num?)?.toInt() ?? 0), detail: 'Available demo balance', color: TwalaColors.teal))]),
           const SizedBox(height: 16),
-          EligibilityCard(online: online),
+          EligibilityCard(online: online, captain: captain),
           const SizedBox(height: 20),
           TwalaSectionHeader(title: online ? tripTitle(stage) : 'Ready when you are'),
           const SizedBox(height: 12),
@@ -293,10 +297,11 @@ class OfflineCard extends StatelessWidget {
 }
 
 class EligibilityCard extends StatelessWidget {
-  const EligibilityCard({super.key, required this.online});
+  const EligibilityCard({super.key, required this.online, required this.captain});
   final bool online;
+  final Map<String, dynamic>? captain;
   @override
-  Widget build(BuildContext context) => Card(child: Padding(padding: const EdgeInsets.all(17), child: Row(children: [const CircleAvatar(backgroundColor: TwalaColors.mint, child: Icon(Icons.verified_outlined, color: TwalaColors.teal)), const SizedBox(width: 12), const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Booking eligibility', style: TextStyle(color: TwalaColors.ink, fontWeight: FontWeight.w800)), SizedBox(height: 3), Text('Cash eligible • Cashless eligible', style: TextStyle(color: TwalaColors.muted))])), TwalaStatusPill(label: online ? 'Active' : 'Eligible', icon: Icons.check_circle_outline)])));
+  Widget build(BuildContext context) => Card(child: Padding(padding: const EdgeInsets.all(17), child: Row(children: [const CircleAvatar(backgroundColor: TwalaColors.mint, child: Icon(Icons.verified_outlined, color: TwalaColors.teal)), const SizedBox(width: 12), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text('Booking eligibility', style: TextStyle(color: TwalaColors.ink, fontWeight: FontWeight.w800)), const SizedBox(height: 3), Text('Cash: ${captain?['cashEligible'] == true ? 'Eligible' : 'Unavailable'} • Cashless: ${captain?['cashlessEligible'] == true ? 'Eligible' : 'Unavailable'}', style: const TextStyle(color: TwalaColors.muted))])), TwalaStatusPill(label: online ? 'Active' : 'Eligible', icon: Icons.check_circle_outline)])));
 }
 
 class StatCard extends StatelessWidget {
