@@ -101,7 +101,7 @@ class HomePage extends StatelessWidget {
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             const Row(children: [Expanded(child: TwalaWordmark(light: true, compact: true)), CircleIcon(icon: Icons.notifications_none, dark: true)]),
             const SizedBox(height: 30),
-            Text('Good morning, Amina', style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: const Color(0xFFC5D9D5))),
+            Text('Good morning, Amina', style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: const Color(0xFFD9E8DC))),
             const SizedBox(height: 5),
             Text('Where are we going?', style: Theme.of(context).textTheme.headlineLarge?.copyWith(color: Colors.white)),
             const SizedBox(height: 22),
@@ -146,7 +146,7 @@ class HomePage extends StatelessWidget {
           const SizedBox(height: 22),
           Container(
             padding: const EdgeInsets.all(19),
-            decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFFFFE6DA), Color(0xFFFFF7E9)]), borderRadius: BorderRadius.circular(25), border: Border.all(color: const Color(0xFFFFD0B8))),
+            decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFFFFF3D4), Color(0xFFFFFAEC)]), borderRadius: BorderRadius.circular(25), border: Border.all(color: const Color(0xFFE8D49D))),
             child: const Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
               CircleAvatar(backgroundColor: TwalaColors.orange, foregroundColor: Colors.white, child: Icon(Icons.verified_user_outlined)),
               SizedBox(width: 13),
@@ -567,14 +567,14 @@ class WalletPage extends StatelessWidget {
         padding: const EdgeInsets.all(23),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
-            colors: [TwalaColors.deepGreen, Color(0xFF26636A)],
+            colors: [TwalaColors.deepGreen, Color(0xFF285B37)],
           ),
           borderRadius: BorderRadius.circular(27),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Wallet status', style: TextStyle(color: Color(0xFFC9DDDA))),
+            const Text('Wallet status', style: TextStyle(color: Color(0xFFD7E6D8))),
             const SizedBox(height: 10),
             Text('Not available in demo', style: Theme.of(context).textTheme.titleLarge?.copyWith(color: Colors.white)),
             const SizedBox(height: 8),
@@ -629,7 +629,7 @@ class CircleIcon extends StatelessWidget {
   final IconData icon;
   final bool dark;
   @override
-  Widget build(BuildContext context) => Container(width: 42, height: 42, decoration: BoxDecoration(color: dark ? const Color(0xFF2A555A) : TwalaColors.canvas, shape: BoxShape.circle), child: Icon(icon, color: dark ? Colors.white : TwalaColors.ink, size: 21));
+  Widget build(BuildContext context) => Container(width: 42, height: 42, decoration: BoxDecoration(color: dark ? const Color(0xFF315E3C) : TwalaColors.canvas, shape: BoxShape.circle), child: Icon(icon, color: dark ? Colors.white : TwalaColors.ink, size: 21));
 }
 
 class LocationLine extends StatelessWidget {
