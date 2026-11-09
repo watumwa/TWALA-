@@ -22,6 +22,8 @@ class _CaptainAppState extends State<CaptainApp> {
   String? error;
   Map<String, dynamic>? activeBooking;
   Map<String, dynamic>? captain;
+  List<Map<String, dynamic>> captainBookings = [];
+  List<Map<String, dynamic>> captainTransactions = [];
   CaptainTripStage stage = CaptainTripStage.offline;
 
   @override
@@ -47,6 +49,7 @@ class _CaptainAppState extends State<CaptainApp> {
       final state = payload['state'] as Map<String, dynamic>;
       final captains = (state['captains'] as List).cast<Map<String, dynamic>>();
       final bookings = (state['bookings'] as List).cast<Map<String, dynamic>>();
+      final transactions = (state['transactions'] as List).cast<Map<String, dynamic>>();
       final currentCaptain = captains.where((c) => c['id'] == captainId).firstOrNull;
       final assigned = bookings.where((b) =>
         b['captainId'] == captainId &&
@@ -62,6 +65,8 @@ class _CaptainAppState extends State<CaptainApp> {
         ? available : null);
       setState(() {
         captain = currentCaptain;
+        captainBookings = bookings.where((b) => b['captainId'] == captainId).toList();
+        captainTransactions = transactions.where((t) => t['captainId'] == captainId).toList();
         online = currentCaptain?['online'] == true;
         activeBooking = booking;
         error = null;
@@ -144,8 +149,8 @@ class _CaptainAppState extends State<CaptainApp> {
             onOnlineChanged: busy ? (_) {} : setOnline,
             onAdvance: () => unawaited(advance()),
           ),
-          const EarningsPage(),
-          const TripsPage(),
+          EarningsPage(captain: captain, transactions: captainTransactions),
+          TripsPage(bookings: captainBookings),
           const CaptainAccountPage(),
         ])),
       ]),
@@ -305,19 +310,98 @@ class StatCard extends StatelessWidget {
 }
 
 class EarningsPage extends StatelessWidget {
-  const EarningsPage({super.key});
+  const EarningsPage({super.key, required this.captain, required this.transactions});
+  final Map<String, dynamic>? captain;
+  final List<Map<String, dynamic>> transactions;
+
   @override
-  Widget build(BuildContext context) => CaptainBasicPage(title: 'Your earnings', subtitle: 'Clear financial positions • Demo', child: Column(children: [
-    Container(width: double.infinity, padding: const EdgeInsets.all(22), decoration: BoxDecoration(color: TwalaColors.deepGreen, borderRadius: BorderRadius.circular(27)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text('Available balance', style: TextStyle(color: Color(0xFFC7DBD7))), const SizedBox(height: 7), Text('UGX 67,200', style: Theme.of(context).textTheme.headlineLarge?.copyWith(color: Colors.white)), const SizedBox(height: 16), const Row(children: [Expanded(child: FinanceMetric(label: 'Pending settlement', value: 'UGX 12,400')), SizedBox(width: 10), Expanded(child: FinanceMetric(label: 'Outstanding commission', value: 'UGX 3,250'))])])),
-    const SizedBox(height: 18),
-    Card(child: Column(children: const [MoneyRow(title: 'Cash trip • TW-HOI-10028', detail: 'Commission recorded', amount: '+ UGX 7,650'), Divider(height: 1, indent: 65), MoneyRow(title: 'Cashless trip • TW-HOI-10021', detail: 'Settled', amount: '+ UGX 16,200'), Divider(height: 1, indent: 65), MoneyRow(title: 'Commission deduction', detail: 'Cash trip obligation', amount: '− UGX 850')]))
-  ]));
+  Widget build(BuildContext context) {
+    final balance = (captain?['walletAvailable'] as num?)?.toInt() ?? 0;
+    final commission = (captain?['outstandingCommission'] as num?)?.toInt() ?? 0;
+    final pending = transactions.where((t) =>
+      t['kind'] == 'withdrawal' && t['status'] == 'pending').fold<int>(
+        0, (total, t) => total + ((t['amount'] as num?)?.toInt() ?? 0));
+    return CaptainBasicPage(
+      title: 'Your earnings',
+      subtitle: 'Shared demonstration balances • Not real money',
+      child: Column(children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(22),
+          decoration: BoxDecoration(
+            color: TwalaColors.deepGreen,
+            borderRadius: BorderRadius.circular(27),
+          ),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('Available demo wallet', style: TextStyle(color: Color(0xFFC7DBD7))),
+            const SizedBox(height: 7),
+            Text(formatUgx(balance), style: Theme.of(context).textTheme.headlineLarge?.copyWith(color: Colors.white)),
+            const SizedBox(height: 16),
+            Row(children: [
+              Expanded(child: FinanceMetric(label: 'Pending withdrawals', value: formatUgx(pending))),
+              const SizedBox(width: 10),
+              Expanded(child: FinanceMetric(label: 'Commission owed', value: formatUgx(commission))),
+            ]),
+          ]),
+        ),
+        const SizedBox(height: 18),
+        if (transactions.isEmpty)
+          const Card(child: Padding(
+            padding: EdgeInsets.all(20),
+            child: Text('No demo transactions recorded yet.'),
+          ))
+        else
+          Card(child: Column(children: [
+            for (final t in transactions.reversed) ...[
+              MoneyRow(
+                title: '${t['kind']} • ${t['reference']}',
+                detail: '${t['status']} • Demo',
+                amount: formatUgx((t['amount'] as num).toInt()),
+              ),
+              const Divider(height: 1, indent: 65),
+            ],
+          ])),
+      ]),
+    );
+  }
 }
 
 class TripsPage extends StatelessWidget {
-  const TripsPage({super.key});
+  const TripsPage({super.key, required this.bookings});
+  final List<Map<String, dynamic>> bookings;
+
   @override
-  Widget build(BuildContext context) => CaptainBasicPage(title: 'Trip history', subtitle: 'Completed and cancelled bookings', child: Column(children: [for (final trip in const [('Hoima City Mall → Kasingo', 'Cash • Completed', 'UGX 8,500'), ('Bujumbura Road → Hoima Stadium', 'Cashless • Completed', 'UGX 18,000'), ('Main Street → Kijungu', 'Passenger cancelled', 'UGX 0')]) Padding(padding: const EdgeInsets.only(bottom: 10), child: Card(child: ListTile(contentPadding: const EdgeInsets.all(15), leading: const CircleAvatar(backgroundColor: TwalaColors.mint, child: Icon(Icons.route, color: TwalaColors.teal)), title: Text(trip.$1, style: const TextStyle(fontWeight: FontWeight.w800)), subtitle: Text(trip.$2), trailing: Text(trip.$3, style: const TextStyle(fontWeight: FontWeight.w900)))))]));
+  Widget build(BuildContext context) => CaptainBasicPage(
+    title: 'Trip history',
+    subtitle: 'Your assigned rides • Shared demo data',
+    child: Column(children: [
+      if (bookings.isEmpty)
+        const Card(child: Padding(
+          padding: EdgeInsets.all(20),
+          child: Text('No assigned trips yet. Accept a demo booking to begin.'),
+        )),
+      for (final trip in bookings)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: Card(child: ListTile(
+            contentPadding: const EdgeInsets.all(15),
+            leading: const CircleAvatar(
+              backgroundColor: TwalaColors.mint,
+              child: Icon(Icons.route, color: TwalaColors.teal),
+            ),
+            title: Text(
+              '${trip['pickup']} → ${trip['destination']}',
+              style: const TextStyle(fontWeight: FontWeight.w800),
+            ),
+            subtitle: Text('${trip['id']} • ${trip['paymentMethod']} • ${trip['status']}'),
+            trailing: Text(
+              formatUgx((trip['fare'] as num).toInt()),
+              style: const TextStyle(fontWeight: FontWeight.w900),
+            ),
+          )),
+        ),
+    ]),
+  );
 }
 
 class CaptainAccountPage extends StatelessWidget {
