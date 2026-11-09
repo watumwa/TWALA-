@@ -105,10 +105,22 @@ class HomePage extends StatelessWidget {
             const SizedBox(height: 5),
             Text('Where are we going?', style: Theme.of(context).textTheme.headlineLarge?.copyWith(color: Colors.white)),
             const SizedBox(height: 22),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
-              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18)),
-              child: const Row(children: [Icon(Icons.search, color: TwalaColors.orange), SizedBox(width: 12), Expanded(child: Text('Search destination', style: TextStyle(color: TwalaColors.muted, fontSize: 16))), Icon(Icons.arrow_forward)]),
+            Material(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(18),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(18),
+                onTap: () => onBook(RideService.boda),
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+                  child: Row(children: [
+                    Icon(Icons.search, color: TwalaColors.orange),
+                    SizedBox(width: 12),
+                    Expanded(child: Text('Enter pickup and destination', style: TextStyle(color: TwalaColors.muted, fontSize: 16))),
+                    Icon(Icons.arrow_forward),
+                  ]),
+                ),
+              ),
             ),
           ]),
         ),
@@ -129,7 +141,7 @@ class HomePage extends StatelessWidget {
           Card(child: Column(children: [
             ActionTile(icon: Icons.tag, title: 'Enter Captain ID', subtitle: 'Pair with a verified Captain nearby', onTap: onDirectPair),
             const Divider(height: 1, indent: 70),
-            ActionTile(icon: Icons.qr_code_scanner, title: 'Scan Captain QR', subtitle: 'Camera scanner not available in this demo; enter Captain ID instead', onTap: onDirectPair),
+            ActionTile(icon: Icons.qr_code_scanner, title: 'Captain QR pairing (demo)', subtitle: 'Camera scanning unavailable • use Captain ID', onTap: onDirectPair),
           ])),
           const SizedBox(height: 22),
           Container(
