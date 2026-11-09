@@ -25,10 +25,10 @@ abstract final class TwalaColors {
 
 ThemeData buildTwalaTheme() {
   final scheme = ColorScheme.fromSeed(
-    seedColor: TwalaColors.orange,
+    seedColor: TwalaColors.green,
     brightness: Brightness.light,
-    primary: TwalaColors.orange,
-    secondary: TwalaColors.teal,
+    primary: TwalaColors.green,
+    secondary: TwalaColors.gold,
     surface: TwalaColors.surface,
   );
 
@@ -89,13 +89,13 @@ ThemeData buildTwalaTheme() {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.all(Radius.circular(18)),
-        borderSide: BorderSide(color: TwalaColors.orange, width: 2),
+        borderSide: BorderSide(color: TwalaColors.green, width: 2),
       ),
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
         minimumSize: const Size.fromHeight(54),
-        backgroundColor: TwalaColors.orange,
+        backgroundColor: TwalaColors.green,
         foregroundColor: Colors.white,
         textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
@@ -332,7 +332,7 @@ class _DemoMapPainter extends CustomPainter {
     canvas.drawPath(
       route,
       Paint()
-        ..color = TwalaColors.orange
+        ..color = TwalaColors.green
         ..strokeWidth = 5
         ..style = PaintingStyle.stroke
         ..strokeCap = StrokeCap.round,
