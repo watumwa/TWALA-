@@ -465,12 +465,43 @@ class ActivityPage extends StatelessWidget {
 
 class WalletPage extends StatelessWidget {
   const WalletPage({super.key});
+
   @override
-  Widget build(BuildContext context) => BasicPage(title: 'TWALA Wallet', subtitle: 'Demo financial view', child: Column(children: [
-    Container(width: double.infinity, padding: const EdgeInsets.all(23), decoration: BoxDecoration(gradient: const LinearGradient(colors: [TwalaColors.deepGreen, Color(0xFF26636A)]), borderRadius: BorderRadius.circular(27)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text('Available balance', style: TextStyle(color: Color(0xFFC9DDDA))), const SizedBox(height: 7), Text('UGX 42,500', style: Theme.of(context).textTheme.headlineLarge?.copyWith(color: Colors.white)), const SizedBox(height: 5), const Text('Fictional prototype funds', style: TextStyle(color: Color(0xFFFFC1A4), fontSize: 12, fontWeight: FontWeight.w700)), const SizedBox(height: 19), Row(children: [Expanded(child: FilledButton(onPressed: () {}, style: FilledButton.styleFrom(backgroundColor: Colors.white, foregroundColor: TwalaColors.ink), child: const Text('Deposit'))), const SizedBox(width: 10), Expanded(child: OutlinedButton(onPressed: () {}, style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: const BorderSide(color: Colors.white54)), child: const Text('Withdraw')))])])),
-    const SizedBox(height: 18),
-    Card(child: Column(children: const [TransactionRow(title: 'Wallet deposit', detail: 'Confirmed • Demo', amount: '+ UGX 30,000', positive: true), Divider(height: 1, indent: 65), TransactionRow(title: 'Boda-boda trip', detail: 'TW-HOI-10028', amount: '− UGX 8,500'), Divider(height: 1, indent: 65), TransactionRow(title: 'Withdrawal', detail: 'Pending • Funds reserved', amount: '− UGX 10,000')]))
-  ]));
+  Widget build(BuildContext context) => BasicPage(
+    title: 'TWALA Wallet',
+    subtitle: 'Passenger wallet • Not yet connected',
+    child: Column(children: [
+      Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(23),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [TwalaColors.deepGreen, Color(0xFF26636A)],
+          ),
+          borderRadius: BorderRadius.circular(27),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Wallet status', style: TextStyle(color: Color(0xFFC9DDDA))),
+            const SizedBox(height: 10),
+            Text('Not available in demo', style: Theme.of(context).textTheme.titleLarge?.copyWith(color: Colors.white)),
+            const SizedBox(height: 8),
+            const Text(
+              'No real funds are stored or transferred. Deposits, withdrawals and passenger wallet payments require a secure backend and payment integration.',
+              style: TextStyle(color: Colors.white70),
+            ),
+          ],
+        ),
+      ),
+      const SizedBox(height: 18),
+      const Card(child: ListTile(
+        leading: Icon(Icons.info_outline, color: TwalaColors.teal),
+        title: Text('Wallet transactions unavailable'),
+        subtitle: Text('Trip history is available in the Activity tab.'),
+      )),
+    ]),
+  );
 }
 
 class AccountPage extends StatelessWidget {
