@@ -19,6 +19,7 @@ export interface Booking {
   service: RideService; paymentMethod: PaymentMethod; fare: number;
   captainId: string | null; status: BookingStatus; createdAt: string;
   pairing: "standard" | "id" | "qr"; requestedCaptainId?: string;
+  pickupCode?: string; pickupVerified?: boolean;
 }
 export interface WalletTransaction {
   id: string; captainId: string; kind: "deposit" | "withdrawal" | "commission" | "earning";
@@ -56,7 +57,7 @@ export function createBooking(state: DemoState, input: Omit<Booking,"id"|"status
   if (!Number.isSafeInteger(input.fare) || input.fare <= 0) throw new Error("Fare must be a positive integer in UGX");
   if (!input.passenger.trim() || !input.pickup.trim() || !input.destination.trim()) throw new Error("Passenger and route are required");
   if(input.pairing!=="standard" && !input.requestedCaptainId) throw new Error("Captain ID required for direct pairing");
-  const booking: Booking = {...input,id:id(state,"TRIP"),status:"searching",captainId:null,createdAt:new Date().toISOString()};
+  const booking: Booking = {...input,id:id(state,"TRIP"),status:"searching",captainId:null,createdAt:new Date().toISOString(),pickupCode:String(Math.floor(1000+Math.random()*9000)),pickupVerified:false};
   return record({...state,nextId:state.nextId+1,bookings:[booking,...state.bookings]},`${booking.id} created with ${booking.paymentMethod} selected before matching`);
 }
 export function acceptBooking(state: DemoState, bookingId: string, captainId: string): DemoState {
@@ -73,6 +74,7 @@ export function advanceBooking(state: DemoState, bookingId: string): DemoState {
   const booking=state.bookings.find(b=>b.id===bookingId);
   if(!booking) throw new Error("Booking not found");
   const next: Partial<Record<BookingStatus,BookingStatus>>={matched:"arrived",arrived:"in_progress",in_progress:"completed"};
+  if (booking.status === "arrived" && !booking.pickupVerified) throw new Error("Verify passenger pickup code before starting the trip");
   const status=next[booking.status];
   if(!status) throw new Error("Invalid trip status transition");
   let result: DemoState={...state,bookings:state.bookings.map(b=>b.id===bookingId?{...b,status}:b)};
@@ -150,4 +152,15 @@ export function cancelBooking(state: DemoState, bookingId: string, reason: strin
     bookings: state.bookings.map(b => b.id === bookingId
       ? {...b, status: "cancelled" as const} : b),
   }, `${bookingId} cancelled: ${safeReason}`);
+}
+
+/** Prototype-only pickup code check. Real deployments require authenticated identities and secret storage. */
+export function verifyPickupCode(state: DemoState, bookingId: string, code: string): DemoState {
+  const booking = state.bookings.find(b => b.id === bookingId);
+  if (!booking) throw new Error("Booking not found");
+  if (booking.status !== "arrived") throw new Error("Captain must arrive before pickup verification");
+  if (booking.pickupVerified) throw new Error("Pickup is already verified");
+  if (!/^\\d{4}$/.test(code) || code !== booking.pickupCode) throw new Error("Invalid passenger pickup code");
+  return record({...state, bookings: state.bookings.map(b =>
+    b.id === bookingId ? {...b, pickupVerified: true} : b)}, `${bookingId}: passenger pickup verified`);
 }
