@@ -23,3 +23,25 @@ jobs:
         run: npx tsc --noEmit
       - name: Production build
         run: npm run build
+  flutter:
+    name: Flutter ${{ matrix.app }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [customer_app, captain_app]
+    defaults:
+      run:
+        working-directory: twala-platform/apps/${{ matrix.app }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Install Flutter dependencies
+        run: flutter pub get
+      - name: Static analysis
+        run: flutter analyze
+      - name: Flutter tests
+        run: flutter test
