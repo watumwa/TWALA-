@@ -56,7 +56,15 @@ export function eligibleCaptain(captain: Captain, service: RideService, payment:
 export function createBooking(state: DemoState, input: Omit<Booking,"id"|"status"|"captainId"|"createdAt">): DemoState {
   if (!Number.isSafeInteger(input.fare) || input.fare <= 0) throw new Error("Fare must be a positive integer in UGX");
   if (!input.passenger.trim() || !input.pickup.trim() || !input.destination.trim()) throw new Error("Passenger and route are required");
-  if(input.pairing!=="standard" && !input.requestedCaptainId) throw new Error("Captain ID required for direct pairing");
+  if(input.pairing!=="standard") {
+    const requestedId = input.requestedCaptainId?.trim();
+    if (!requestedId) throw new Error("Captain ID required for direct pairing");
+    const requested = state.captains.find(c => c.id === requestedId);
+    if (!requested) throw new Error("Captain ID not found");
+    if (!eligibleCaptain(requested, input.service, input.paymentMethod)) {
+      throw new Error("Selected Captain is not available or eligible for this booking");
+    }
+  }
   const booking: Booking = {...input,id:id(state,"TRIP"),status:"searching",captainId:null,createdAt:new Date().toISOString(),pickupCode:String(Math.floor(1000+Math.random()*9000)),pickupVerified:false};
   return record({...state,nextId:state.nextId+1,bookings:[booking,...state.bookings]},`${booking.id} created with ${booking.paymentMethod} selected before matching`);
 }
