@@ -14,6 +14,42 @@ class CustomerApp extends StatefulWidget {
 class _CustomerAppState extends State<CustomerApp> {
   int tab = 0;
   RideService? booking;
+  final TwalaDemoApi activityApi = TwalaDemoApi();
+  Timer? activityTimer;
+  List<Map<String, dynamic>> activityBookings = [];
+  String? activityError;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(refreshActivity());
+    activityTimer = Timer.periodic(
+      const Duration(seconds: 5),
+      (_) => unawaited(refreshActivity()),
+    );
+  }
+
+  Future<void> refreshActivity() async {
+    try {
+      final snapshot = await activityApi.snapshot();
+      final state = snapshot['state'] as Map<String, dynamic>;
+      final bookings = (state['bookings'] as List).cast<Map<String, dynamic>>();
+      if (!mounted) return;
+      setState(() {
+        activityBookings = bookings.where((b) => b['passenger'] == 'Amina (Demo)').toList();
+        activityError = null;
+      });
+    } catch (_) {
+      if (mounted) setState(() => activityError = 'Unable to refresh demo activity');
+    }
+  }
+
+  @override
+  void dispose() {
+    activityTimer?.cancel();
+    activityApi.close();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -24,7 +60,7 @@ class _CustomerAppState extends State<CustomerApp> {
           child: booking == null
               ? IndexedStack(index: tab, children: [
                   HomePage(onBook: (value) => setState(() => booking = value)),
-                  const ActivityPage(),
+                  ActivityPage(bookings: activityBookings, error: activityError, onRefresh: () => unawaited(refreshActivity())),
                   const WalletPage(),
                   const AccountPage(),
                 ])
@@ -363,9 +399,68 @@ class _BookingPageState extends State<BookingPage> {
 }
 
 class ActivityPage extends StatelessWidget {
-  const ActivityPage({super.key});
+  const ActivityPage({
+    super.key,
+    required this.bookings,
+    required this.error,
+    required this.onRefresh,
+  });
+
+  final List<Map<String, dynamic>> bookings;
+  final String? error;
+  final VoidCallback onRefresh;
+
   @override
-  Widget build(BuildContext context) => BasicPage(title: 'Your activity', subtitle: 'Trips and booking updates', child: Column(children: [for (final trip in const [('Boda-boda', 'Hoima City Mall → Kasingo', 'UGX 8,500', Icons.two_wheeler), ('Car', 'Bujumbura Road → Hoima Stadium', 'UGX 21,000', Icons.directions_car), ('Boda-boda', 'Kigorobya Road → Main Street', 'UGX 10,200', Icons.two_wheeler)]) Padding(padding: const EdgeInsets.only(bottom: 10), child: Card(child: ListTile(contentPadding: const EdgeInsets.all(15), leading: CircleAvatar(backgroundColor: TwalaColors.orangeSoft, child: Icon(trip.$4, color: TwalaColors.orangeDark)), title: Text(trip.$1, style: const TextStyle(fontWeight: FontWeight.w800)), subtitle: Text('${trip.$2}\nCompleted • Demo'), isThreeLine: true, trailing: Text(trip.$3, style: const TextStyle(fontWeight: FontWeight.w900)))))]));
+  Widget build(BuildContext context) => BasicPage(
+    title: 'Your activity',
+    subtitle: 'Shared TWALA demonstration bookings',
+    child: Column(children: [
+      Align(
+        alignment: Alignment.centerRight,
+        child: TextButton.icon(
+          onPressed: onRefresh,
+          icon: const Icon(Icons.refresh),
+          label: const Text('Refresh'),
+        ),
+      ),
+      if (error != null)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Text(error!, style: const TextStyle(color: Colors.red)),
+        ),
+      if (bookings.isEmpty)
+        const Card(child: Padding(
+          padding: EdgeInsets.all(22),
+          child: Text('No demo bookings yet. Book a ride to see its status here.'),
+        )),
+      for (final trip in bookings)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: Card(child: ListTile(
+            contentPadding: const EdgeInsets.all(15),
+            leading: CircleAvatar(
+              backgroundColor: TwalaColors.orangeSoft,
+              child: Icon(
+                trip['service'] == 'car' ? Icons.directions_car : Icons.two_wheeler,
+                color: TwalaColors.orangeDark,
+              ),
+            ),
+            title: Text(
+              '${trip['pickup']} → ${trip['destination']}',
+              style: const TextStyle(fontWeight: FontWeight.w800),
+            ),
+            subtitle: Text(
+              '${trip['id']} • ${trip['status']} • ${trip['paymentMethod']}\nDemo booking',
+            ),
+            isThreeLine: true,
+            trailing: Text(
+              formatUgx((trip['fare'] as num).toInt()),
+              style: const TextStyle(fontWeight: FontWeight.w900),
+            ),
+          )),
+        ),
+    ]),
+  );
 }
 
 class WalletPage extends StatelessWidget {
