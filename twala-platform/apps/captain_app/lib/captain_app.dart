@@ -107,6 +107,24 @@ class _CaptainAppState extends State<CaptainApp> {
     }
   }
 
+  Future<void> verifyPickup(String code) async {
+    final booking = activeBooking;
+    if (booking == null || busy || booking['status'] != 'arrived') return;
+    setState(() => busy = true);
+    try {
+      await api.action({
+        'action': 'verify_pickup',
+        'bookingId': booking['id'],
+        'code': code,
+      });
+      await refresh();
+    } catch (e) {
+      if (mounted) setState(() => error = 'Pickup verification failed: $e');
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
   Future<void> advance() async {
     final booking = activeBooking;
     if (booking == null || busy || !online) return;
@@ -150,6 +168,7 @@ class _CaptainAppState extends State<CaptainApp> {
             bookings: captainBookings,
             onOnlineChanged: busy ? (_) {} : setOnline,
             onAdvance: () => unawaited(advance()),
+            onVerifyPickup: (code) => unawaited(verifyPickup(code)),
           ),
           EarningsPage(captain: captain, transactions: captainTransactions),
           TripsPage(bookings: captainBookings),
@@ -173,7 +192,7 @@ class _CaptainAppState extends State<CaptainApp> {
 }
 
 class CaptainHome extends StatelessWidget {
-  const CaptainHome({super.key, required this.online, required this.stage, required this.onOnlineChanged, required this.onAdvance, required this.booking, required this.busy, required this.captain, required this.bookings});
+  const CaptainHome({super.key, required this.online, required this.stage, required this.onOnlineChanged, required this.onAdvance, required this.booking, required this.busy, required this.captain, required this.bookings, required this.onVerifyPickup});
   final Map<String, dynamic>? booking;
   final Map<String, dynamic>? captain;
   final List<Map<String, dynamic>> bookings;
@@ -182,6 +201,7 @@ class CaptainHome extends StatelessWidget {
   final CaptainTripStage stage;
   final ValueChanged<bool> onOnlineChanged;
   final VoidCallback onAdvance;
+  final ValueChanged<String> onVerifyPickup;
 
   @override
   Widget build(BuildContext context) {
@@ -215,7 +235,7 @@ class CaptainHome extends StatelessWidget {
           const SizedBox(height: 20),
           TwalaSectionHeader(title: online ? tripTitle(stage) : 'Ready when you are'),
           const SizedBox(height: 12),
-          if (!online) OfflineCard(onGoOnline: () => onOnlineChanged(true)) else if (booking == null) const Card(child: Padding(padding: EdgeInsets.all(22), child: Text('Waiting for an eligible booking from the shared TWALA demo API…'))) else TripControl(stage: stage, onAdvance: onAdvance, booking: booking!, busy: busy),
+          if (!online) OfflineCard(onGoOnline: () => onOnlineChanged(true)) else if (booking == null) const Card(child: Padding(padding: EdgeInsets.all(22), child: Text('Waiting for an eligible booking from the shared TWALA demo API…'))) else TripControl(stage: stage, onAdvance: onAdvance, onVerifyPickup: onVerifyPickup, booking: booking!, busy: busy),
         ]),
       ),
     ]);
@@ -232,7 +252,8 @@ String tripTitle(CaptainTripStage stage) => switch (stage) {
     };
 
 class TripControl extends StatelessWidget {
-  const TripControl({super.key, required this.stage, required this.onAdvance, required this.booking, required this.busy});
+  const TripControl({super.key, required this.stage, required this.onAdvance, required this.booking, required this.busy, required this.onVerifyPickup});
+  final ValueChanged<String> onVerifyPickup;
   final Map<String, dynamic> booking;
   final bool busy;
   final CaptainTripStage stage;
@@ -267,6 +288,19 @@ class TripControl extends StatelessWidget {
       const SizedBox(height: 18),
       if (request)
         FilledButton(key: const Key('captain-advance'), onPressed: busy ? null : onAdvance, child: const Text('Accept ride'))
+      else if (stage == CaptainTripStage.arrived && booking['pickupVerified'] != true)
+        FilledButton(onPressed: busy ? null : () async {
+          final controller = TextEditingController();
+          final code = await showDialog<String>(context: context, builder: (context) => AlertDialog(
+            title: const Text('Verify passenger pickup'),
+            content: TextField(controller: controller, autofocus: true, keyboardType: TextInputType.number,
+              maxLength: 4, decoration: const InputDecoration(labelText: 'Passenger 4-digit code')),
+            actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+              FilledButton(onPressed: () => Navigator.pop(context, controller.text), child: const Text('Verify'))],
+          ));
+          controller.dispose();
+          if (code != null) onVerifyPickup(code);
+        }, child: const Text('Enter passenger pickup code'))
       else
         FilledButton(key: const Key('captain-advance'), onPressed: busy ? null : onAdvance, child: Text(switch (stage) { CaptainTripStage.pickup => 'I have arrived', CaptainTripStage.arrived => 'Verify and start trip', CaptainTripStage.active => 'Complete demo trip', _ => 'Continue' })),
     ]);
