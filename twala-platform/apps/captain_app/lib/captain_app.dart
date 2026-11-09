@@ -134,7 +134,9 @@ class _CaptainAppState extends State<CaptainApp> {
     if (status != 'searching' &&
         status != 'matched' &&
         status != 'arrived' &&
-        status != 'in_progress') return;
+        status != 'in_progress') {
+      return;
+    }
     setState(() => busy = true);
     try {
       await api.action({
