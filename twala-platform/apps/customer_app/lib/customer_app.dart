@@ -262,6 +262,49 @@ class _BookingPageState extends State<BookingPage> {
     }
   }
 
+  Future<void> cancelSharedBooking() async {
+    final id = sharedBookingId;
+    if (id == null || submitting) return;
+    final controller = TextEditingController();
+    final reason = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Cancel demo ride?'),
+        content: TextField(
+          controller: controller,
+          maxLength: 160,
+          decoration: const InputDecoration(
+            labelText: 'Reason for cancellation',
+            hintText: 'Why are you cancelling?',
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Keep ride')),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, controller.text.trim()),
+            child: const Text('Cancel ride'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (!mounted || reason == null) return;
+    if (reason.isEmpty) {
+      setState(() => bookingError = 'Please provide a cancellation reason.');
+      return;
+    }
+    setState(() { submitting = true; bookingError = null; });
+    try {
+      await demoApi.action('cancel_booking', {'bookingId': id, 'reason': reason});
+      bookingPoll?.cancel();
+      if (mounted) setState(() => cancelled = true);
+    } catch (error) {
+      if (mounted) setState(() => bookingError = 'Cancellation failed: $error');
+    } finally {
+      if (mounted) setState(() => submitting = false);
+    }
+  }
+
   void back() {
     if (stage == BookingStage.route || stage.index >= BookingStage.searching.index) { bookingPoll?.cancel(); return widget.onClose(); }
     setState(() => stage = BookingStage.values[stage.index - 1]);
@@ -317,6 +360,16 @@ class _BookingPageState extends State<BookingPage> {
         ),
       ),
       if (cancelled) const Padding(padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8), child: Text('This demo booking was cancelled.', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold))),
+      if (sharedBookingId != null && !cancelled &&
+          [BookingStage.searching, BookingStage.matched, BookingStage.arrived].contains(stage))
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: TextButton.icon(
+            onPressed: submitting ? null : () => unawaited(cancelSharedBooking()),
+            icon: const Icon(Icons.close),
+            label: const Text('Cancel demo ride'),
+          ),
+        ),
       if (bookingError != null) Padding(padding: const EdgeInsets.symmetric(horizontal: 20), child: Text(bookingError!, style: const TextStyle(color: Colors.red))),
       if (sharedBookingId != null) Padding(padding: const EdgeInsets.symmetric(horizontal: 20), child: Text('Shared demo booking: $sharedBookingId')),
       Padding(padding: const EdgeInsets.fromLTRB(20, 8, 20, 18), child: FilledButton(key: const Key('booking-next'), onPressed: submitting ? null : next, child: Text(cancelled ? 'Close cancelled booking' : submitting ? 'Connecting…' : sharedBookingId != null && stage != BookingStage.complete ? 'Refresh trip status' : buttonLabel))),
