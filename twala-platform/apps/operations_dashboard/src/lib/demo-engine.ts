@@ -18,7 +18,7 @@ export interface Booking {
   id: string; passenger: string; pickup: string; destination: string;
   service: RideService; paymentMethod: PaymentMethod; fare: number;
   captainId: string | null; status: BookingStatus; createdAt: string;
-  pairing: "standard" | "id" | "qr";
+  pairing: "standard" | "id" | "qr"; requestedCaptainId?: string;
 }
 export interface WalletTransaction {
   id: string; captainId: string; kind: "deposit" | "withdrawal" | "commission" | "earning";
@@ -55,6 +55,7 @@ export function eligibleCaptain(captain: Captain, service: RideService, payment:
 export function createBooking(state: DemoState, input: Omit<Booking,"id"|"status"|"captainId"|"createdAt">): DemoState {
   if (!Number.isSafeInteger(input.fare) || input.fare <= 0) throw new Error("Fare must be a positive integer in UGX");
   if (!input.passenger.trim() || !input.pickup.trim() || !input.destination.trim()) throw new Error("Passenger and route are required");
+  if(input.pairing!=="standard" && !input.requestedCaptainId) throw new Error("Captain ID required for direct pairing");
   const booking: Booking = {...input,id:id(state,"TRIP"),status:"searching",captainId:null,createdAt:new Date().toISOString()};
   return record({...state,nextId:state.nextId+1,bookings:[booking,...state.bookings]},`${booking.id} created with ${booking.paymentMethod} selected before matching`);
 }
@@ -64,7 +65,8 @@ export function acceptBooking(state: DemoState, bookingId: string, captainId: st
   if(!booking || !captain) throw new Error("Booking or Captain not found");
   if(booking.status!=="searching") throw new Error("Booking is no longer available for acceptance");
   if(!eligibleCaptain(captain,booking.service,booking.paymentMethod)) throw new Error("Captain is not eligible for this payment method");
-  if(booking.pairing!=="standard" && booking.captainId && booking.captainId!==captainId) throw new Error("Wrong paired Captain");
+  if(booking.pairing!=="standard" && booking.requestedCaptainId!==captainId) throw new Error("Wrong paired Captain");
+  if(state.bookings.some(b=>b.id!==bookingId && b.captainId===captainId && ["matched","arrived","in_progress"].includes(b.status))) throw new Error("Captain already has an active trip");
   return record({...state,bookings:state.bookings.map(b=>b.id===bookingId?{...b,status:"matched",captainId}:b)},`${captainId} accepted ${bookingId}`);
 }
 export function advanceBooking(state: DemoState, bookingId: string): DemoState {
@@ -80,7 +82,7 @@ export function advanceBooking(state: DemoState, bookingId: string): DemoState {
     const captainId=booking.captainId;
     result={...result,captains:result.captains.map(c=>{
       if(c.id!==captainId) return c;
-      if(booking.paymentMethod==="cash") return {...c,outstandingCommission:c.outstandingCommission+commission};
+      if(booking.paymentMethod==="cash") return {...c,outstandingCommission:c.outstandingCommission+commission,cashEligible:c.outstandingCommission+commission<20000};
       return {...c,walletAvailable:c.walletAvailable+captainShare};
     }),transactions:[...result.transactions,
       {id:id(result,"TX"),captainId,kind:booking.paymentMethod==="cash"?"commission":"earning",amount:booking.paymentMethod==="cash"?commission:captainShare,status:"confirmed",reference:booking.id}
