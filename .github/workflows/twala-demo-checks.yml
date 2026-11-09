@@ -1,0 +1,42 @@
+name: TWALA Demo Checks
+
+on:
+  push:
+    branches:
+      - feature/complete-interactive-frontend
+  pull_request:
+
+jobs:
+  dashboard:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: twala-platform/apps/operations_dashboard
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: twala-platform/apps/operations_dashboard/package-lock.json
+      - run: npm ci
+      - run: npm run test:demo
+      - run: npm run lint
+      - run: npm run build
+
+  flutter:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        app: [customer_app, captain_app]
+    defaults:
+      run:
+        working-directory: twala-platform/apps/${{ matrix.app }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - run: flutter pub get
+      - run: dart analyze lib
+      - run: flutter test
