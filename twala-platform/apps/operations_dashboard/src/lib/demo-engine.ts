@@ -135,3 +135,19 @@ export function setCaptainOnline(state: DemoState, captainId: string, online: bo
     c.id === captainId ? {...c, online} : c)},
     `${captainId} went ${online ? "online" : "offline"}`);
 }
+
+/** Cancel only before trip start; no demo wallet movements are generated. */
+export function cancelBooking(state: DemoState, bookingId: string, reason: string): DemoState {
+  const booking = state.bookings.find(b => b.id === bookingId);
+  if (!booking) throw new Error("Booking not found");
+  if (!["searching", "matched", "arrived"].includes(booking.status)) {
+    throw new Error("Only bookings that have not started can be cancelled");
+  }
+  const safeReason = reason.trim();
+  if (!safeReason || safeReason.length > 160) throw new Error("Cancellation reason must be 1–160 characters");
+  return record({
+    ...state,
+    bookings: state.bookings.map(b => b.id === bookingId
+      ? {...b, status: "cancelled" as const} : b),
+  }, `${bookingId} cancelled: ${safeReason}`);
+}
