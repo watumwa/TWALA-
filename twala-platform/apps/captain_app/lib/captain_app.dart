@@ -398,6 +398,41 @@ class TripsPage extends StatelessWidget {
               formatUgx((trip['fare'] as num).toInt()),
               style: const TextStyle(fontWeight: FontWeight.w900),
             ),
+            onTap: trip['status'] == 'completed'
+                ? () => showModalBottomSheet<void>(
+                    context: context,
+                    isScrollControlled: true,
+                    builder: (context) => SafeArea(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Demo trip receipt', style: Theme.of(context).textTheme.headlineSmall),
+                            const SizedBox(height: 8),
+                            const Text('FICTIONAL • NOT PROOF OF PAYMENT', style: TextStyle(color: TwalaColors.muted)),
+                            const Divider(height: 30),
+                            Text('Trip: ${trip['id']}'),
+                            Text('Passenger: ${trip['passenger']}'),
+                            Text('From: ${trip['pickup']}'),
+                            Text('To: ${trip['destination']}'),
+                            Text('Payment method: ${trip['paymentMethod']}'),
+                            const Divider(height: 30),
+                            Text('Gross fare: ${formatUgx((trip['fare'] as num).toInt())}'),
+                            Text('TWALA commission (10%): ${formatUgx(((trip['fare'] as num) * .10).round())}'),
+                            Text('Captain share: ${formatUgx((trip['fare'] as num).toInt() - ((trip['fare'] as num) * .10).round())}'),
+                            const SizedBox(height: 18),
+                            FilledButton(
+                              onPressed: () => Navigator.of(context).pop(),
+                              child: const Text('Close receipt'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  )
+                : null,
           )),
         ),
     ]),
