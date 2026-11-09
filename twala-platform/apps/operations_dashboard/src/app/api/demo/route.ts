@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import {
   acceptBooking, advanceBooking, confirmDeposit, createBooking,
   initialDemoState, requestWithdrawal, resolveWithdrawal,
-  setCaptainVerification,
+  setCaptainVerification, setCaptainOnline,
   type Booking, type CaptainStatus, type DemoState,
 } from "@/lib/demo-engine";
 
@@ -86,6 +86,10 @@ export async function POST(request: Request) {
         next = setCaptainVerification(state, str("captainId"), status as CaptainStatus);
         break;
       }
+      case "set_captain_online":
+        if (typeof body.online !== "boolean") throw new Error("online must be a boolean");
+        next = setCaptainOnline(state, str("captainId"), body.online);
+        break;
       case "reset":
         next = initialDemoState();
         break;
