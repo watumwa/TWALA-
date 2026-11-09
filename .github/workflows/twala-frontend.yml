@@ -1,0 +1,26 @@
+name: TWALA Frontend Validation
+on:
+  push:
+    branches: [main, feature/complete-interactive-frontend]
+  pull_request:
+    branches: [main]
+jobs:
+  operations:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: twala-platform/apps/operations_dashboard
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: twala-platform/apps/operations_dashboard/package-lock.json
+      - run: npm ci
+      - name: Demo engine tests
+        run: node --experimental-strip-types --test src/lib/demo-engine.test.mts
+      - name: Typecheck
+        run: npx tsc --noEmit
+      - name: Production build
+        run: npm run build
