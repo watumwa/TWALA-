@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'captain_demo_api.dart';
 import 'package:twala_demo_core/twala_demo_core.dart';
 import 'package:twala_ui/twala_ui.dart';
 
@@ -10,23 +13,102 @@ class CaptainApp extends StatefulWidget {
 }
 
 class _CaptainAppState extends State<CaptainApp> {
+  static const captainId = 'TW-HOI-0241';
+  final api = const CaptainDemoApi();
+  Timer? refreshTimer;
   int tab = 0;
   bool online = false;
+  bool busy = false;
+  String? error;
+  Map<String, dynamic>? activeBooking;
+  Map<String, dynamic>? captain;
   CaptainTripStage stage = CaptainTripStage.offline;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(refresh());
+    refreshTimer = Timer.periodic(
+      const Duration(seconds: 3),
+      (_) => unawaited(refresh()),
+    );
+  }
+
+  @override
+  void dispose() {
+    refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> refresh() async {
+    try {
+      final payload = await api.getState();
+      if (!mounted) return;
+      final state = payload['state'] as Map<String, dynamic>;
+      final captains = (state['captains'] as List).cast<Map<String, dynamic>>();
+      final bookings = (state['bookings'] as List).cast<Map<String, dynamic>>();
+      final currentCaptain = captains.where((c) => c['id'] == captainId).firstOrNull;
+      final assigned = bookings.where((b) =>
+        b['captainId'] == captainId &&
+        ['matched', 'arrived', 'in_progress'].contains(b['status'])).firstOrNull;
+      final available = bookings.where((b) =>
+        b['status'] == 'searching' &&
+        b['service'] == 'boda' &&
+        (b['pairing'] == 'standard' || b['requestedCaptainId'] == captainId) &&
+        (b['paymentMethod'] == 'cash'
+          ? currentCaptain?['cashEligible'] == true
+          : currentCaptain?['cashlessEligible'] == true)).firstOrNull;
+      final booking = assigned ?? (online && currentCaptain?['status'] == 'verified'
+        ? available : null);
+      setState(() {
+        captain = currentCaptain;
+        activeBooking = booking;
+        error = null;
+        if (booking == null) {
+          stage = online ? CaptainTripStage.request : CaptainTripStage.offline;
+        } else {
+          stage = switch (booking['status']) {
+            'matched' => CaptainTripStage.pickup,
+            'arrived' => CaptainTripStage.arrived,
+            'in_progress' => CaptainTripStage.active,
+            _ => CaptainTripStage.request,
+          };
+        }
+      });
+    } catch (e) {
+      if (mounted) setState(() => error = 'Demo API unavailable: $e');
+    }
+  }
 
   void setOnline(bool value) {
     setState(() {
       online = value;
       stage = value ? CaptainTripStage.request : CaptainTripStage.offline;
     });
+    unawaited(refresh());
   }
 
-  void advance() {
-    if (stage == CaptainTripStage.completed) {
-      setState(() => stage = CaptainTripStage.request);
-      return;
+  Future<void> advance() async {
+    final booking = activeBooking;
+    if (booking == null || busy) return;
+    final status = booking['status']?.toString();
+    if (status != 'searching' &&
+        status != 'matched' &&
+        status != 'arrived' &&
+        status != 'in_progress') return;
+    setState(() => busy = true);
+    try {
+      await api.action({
+        'action': status == 'searching' ? 'accept_booking' : 'advance_booking',
+        'bookingId': booking['id'],
+        if (status == 'searching') 'captainId': captainId,
+      });
+      await refresh();
+    } catch (e) {
+      if (mounted) setState(() => error = 'Trip action failed: $e');
+    } finally {
+      if (mounted) setState(() => busy = false);
     }
-    setState(() => stage = CaptainTripStage.values[stage.index + 1]);
   }
 
   @override
@@ -34,8 +116,20 @@ class _CaptainAppState extends State<CaptainApp> {
     return Scaffold(
       body: Column(children: [
         const DemoModeBanner(),
+        if (error != null)
+          MaterialBanner(
+            content: Text(error!),
+            actions: [TextButton(onPressed: refresh, child: const Text('Retry'))],
+          ),
         Expanded(child: IndexedStack(index: tab, children: [
-          CaptainHome(online: online, stage: stage, onOnlineChanged: setOnline, onAdvance: advance),
+          CaptainHome(
+            online: online,
+            stage: stage,
+            booking: activeBooking,
+            busy: busy,
+            onOnlineChanged: setOnline,
+            onAdvance: () => unawaited(advance()),
+          ),
           const EarningsPage(),
           const TripsPage(),
           const CaptainAccountPage(),
@@ -58,7 +152,9 @@ class _CaptainAppState extends State<CaptainApp> {
 }
 
 class CaptainHome extends StatelessWidget {
-  const CaptainHome({super.key, required this.online, required this.stage, required this.onOnlineChanged, required this.onAdvance});
+  const CaptainHome({super.key, required this.online, required this.stage, required this.onOnlineChanged, required this.onAdvance, required this.booking, required this.busy});
+  final Map<String, dynamic>? booking;
+  final bool busy;
   final bool online;
   final CaptainTripStage stage;
   final ValueChanged<bool> onOnlineChanged;
@@ -96,7 +192,7 @@ class CaptainHome extends StatelessWidget {
           const SizedBox(height: 20),
           TwalaSectionHeader(title: online ? tripTitle(stage) : 'Ready when you are'),
           const SizedBox(height: 12),
-          if (!online) OfflineCard(onGoOnline: () => onOnlineChanged(true)) else TripControl(stage: stage, onAdvance: onAdvance),
+          if (!online) OfflineCard(onGoOnline: () => onOnlineChanged(true)) else if (booking == null) const Card(child: Padding(padding: EdgeInsets.all(22), child: Text('Waiting for an eligible booking from the shared TWALA demo API…'))) else TripControl(stage: stage, onAdvance: onAdvance, booking: booking!, busy: busy),
         ]),
       ),
     ]);
@@ -113,7 +209,9 @@ String tripTitle(CaptainTripStage stage) => switch (stage) {
     };
 
 class TripControl extends StatelessWidget {
-  const TripControl({super.key, required this.stage, required this.onAdvance});
+  const TripControl({super.key, required this.stage, required this.onAdvance, required this.booking, required this.busy});
+  final Map<String, dynamic> booking;
+  final bool busy;
   final CaptainTripStage stage;
   final VoidCallback onAdvance;
 
@@ -137,17 +235,17 @@ class TripControl extends StatelessWidget {
     final request = stage == CaptainTripStage.request;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       if (request) ...[
-        Row(children: [const TwalaStatusPill(label: '18 sec to respond', icon: Icons.timer_outlined, background: TwalaColors.orangeSoft, foreground: TwalaColors.orangeDark), const Spacer(), Text(formatUgx(8500), style: Theme.of(context).textTheme.titleLarge)]),
+        Row(children: [const TwalaStatusPill(label: '18 sec to respond', icon: Icons.timer_outlined, background: TwalaColors.orangeSoft, foreground: TwalaColors.orangeDark), const Spacer(), Text(formatUgx((booking['fare'] as num).toInt()), style: Theme.of(context).textTheme.titleLarge)]),
         const SizedBox(height: 18),
       ],
-      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [const Icon(Icons.my_location, color: TwalaColors.teal), const SizedBox(width: 11), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text('PICKUP', style: TextStyle(color: TwalaColors.muted, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: .8)), const SizedBox(height: 3), Text('Hoima City Mall', style: Theme.of(context).textTheme.titleMedium), const Text('1.3 km away • Passenger: Amina')]))]),
+      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [const Icon(Icons.my_location, color: TwalaColors.teal), const SizedBox(width: 11), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text('PICKUP', style: TextStyle(color: TwalaColors.muted, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: .8)), const SizedBox(height: 3), Text(booking['pickup'].toString(), style: Theme.of(context).textTheme.titleMedium), Text('Passenger: ${booking['passenger']} • Demo')]))]),
       const Padding(padding: EdgeInsets.only(left: 11), child: SizedBox(height: 24, child: VerticalDivider(color: TwalaColors.line, thickness: 2))),
-      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [const Icon(Icons.location_on, color: TwalaColors.orange), const SizedBox(width: 11), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text('DESTINATION', style: TextStyle(color: TwalaColors.muted, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: .8)), const SizedBox(height: 3), Text('Hoima Regional Referral Hospital', style: Theme.of(context).textTheme.titleMedium), const Text('5.8 km • Cash selected')]))]),
+      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [const Icon(Icons.location_on, color: TwalaColors.orange), const SizedBox(width: 11), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text('DESTINATION', style: TextStyle(color: TwalaColors.muted, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: .8)), const SizedBox(height: 3), Text(booking['destination'].toString(), style: Theme.of(context).textTheme.titleMedium), Text('Payment: ${booking['paymentMethod']} • Demo')]))]),
       const SizedBox(height: 18),
       if (request)
-        Row(children: [Expanded(child: OutlinedButton(onPressed: () {}, child: const Text('Reject'))), const SizedBox(width: 10), Expanded(flex: 2, child: FilledButton(key: const Key('captain-advance'), onPressed: onAdvance, child: const Text('Accept ride')))])
+        Row(children: [Expanded(child: OutlinedButton(onPressed: () {}, child: const Text('Reject'))), const SizedBox(width: 10), Expanded(flex: 2, child: FilledButton(key: const Key('captain-advance'), onPressed: busy ? null : onAdvance, child: const Text('Accept ride')))])
       else
-        FilledButton(key: const Key('captain-advance'), onPressed: onAdvance, child: Text(switch (stage) { CaptainTripStage.pickup => 'I have arrived', CaptainTripStage.arrived => 'Verify and start trip', CaptainTripStage.active => 'Complete demo trip', _ => 'Continue' })),
+        FilledButton(key: const Key('captain-advance'), onPressed: busy ? null : onAdvance, child: Text(switch (stage) { CaptainTripStage.pickup => 'I have arrived', CaptainTripStage.arrived => 'Verify and start trip', CaptainTripStage.active => 'Complete demo trip', _ => 'Continue' })),
     ]);
   }
 
