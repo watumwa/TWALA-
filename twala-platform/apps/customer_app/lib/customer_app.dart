@@ -312,8 +312,8 @@ class _BookingPageState extends State<BookingPage> {
 
   void next() {
     if (cancelled) { bookingPoll?.cancel(); widget.onClose(); return; }
-    if (stage == BookingStage.review) { createSharedBooking(); return; }
-    if (sharedBookingId != null && stage.index >= BookingStage.searching.index && stage != BookingStage.complete) { refreshSharedBooking(); return; }
+    if (stage == BookingStage.review) { unawaited(createSharedBooking()); return; }
+    if (sharedBookingId != null && stage.index >= BookingStage.searching.index && stage != BookingStage.complete) { unawaited(refreshSharedBooking()); return; }
     if (stage == BookingStage.complete) return widget.onClose();
     setState(() => stage = BookingStage.values[stage.index + 1]);
   }
@@ -380,10 +380,10 @@ class _BookingPageState extends State<BookingPage> {
         BookingStage.route => 'Continue to payment',
         BookingStage.payment => 'Review booking',
         BookingStage.review => 'Confirm and find Captain',
-        BookingStage.searching => 'Simulate Captain match',
-        BookingStage.matched => 'Simulate Captain arrival',
-        BookingStage.arrived => 'Start demo trip',
-        BookingStage.inProgress => 'Complete demo trip',
+        BookingStage.searching => 'Refresh trip status',
+        BookingStage.matched => 'Refresh trip status',
+        BookingStage.arrived => 'Refresh trip status',
+        BookingStage.inProgress => 'Refresh trip status',
         BookingStage.complete => 'Done',
       };
 
