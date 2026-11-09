@@ -1,0 +1,15 @@
+name: twala_ui
+description: Shared visual language for the TWALA Phase 2 Flutter prototypes.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.13.7
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true
+

@@ -1,0 +1,23 @@
+name: twala_captain_app
+description: "TWALA Captain App interactive Phase 2 prototype."
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.13.7
+
+dependencies:
+  flutter:
+    sdk: flutter
+  twala_demo_core:
+    path: ../../packages/twala_demo_core
+  twala_ui:
+    path: ../../packages/twala_ui
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

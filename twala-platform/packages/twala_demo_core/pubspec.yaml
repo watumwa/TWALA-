@@ -1,0 +1,8 @@
+name: twala_demo_core
+description: Shared deterministic domain models for the TWALA Phase 2 prototype.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.13.7
+
