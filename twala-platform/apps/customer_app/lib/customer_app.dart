@@ -273,11 +273,13 @@ class _BookingPageState extends State<BookingPage> {
         'completed' => BookingStage.complete,
         _ => BookingStage.searching,
       };
-      if (mounted) setState(() {
-        sharedBooking = matches.first;
-        cancelled = status == 'cancelled';
-        stage = nextStage;
-      });
+      if (mounted) {
+        setState(() {
+          sharedBooking = matches.first;
+          cancelled = status == 'cancelled';
+          stage = nextStage;
+        });
+      }
     } catch (error) {
       if (!silent && mounted) setState(() => bookingError = 'Could not refresh booking: $error');
     } finally {
