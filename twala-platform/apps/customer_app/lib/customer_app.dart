@@ -1,3 +1,4 @@
+import 'demo_api.dart';
 import 'package:flutter/material.dart';
 import 'package:twala_demo_core/twala_demo_core.dart';
 import 'package:twala_ui/twala_ui.dart';
@@ -150,6 +151,66 @@ class _BookingPageState extends State<BookingPage> {
   late RideService service = widget.initialService;
   PaymentMethod payment = PaymentMethod.cash;
   BookingStage stage = BookingStage.route;
+  final TwalaDemoApi demoApi = TwalaDemoApi();
+  String? sharedBookingId;
+  String? bookingError;
+  bool submitting = false;
+
+  @override
+  void dispose() {
+    demoApi.close();
+    super.dispose();
+  }
+
+  Future<void> createSharedBooking() async {
+    if (submitting) return;
+    setState(() { submitting = true; bookingError = null; });
+    try {
+      final result = await demoApi.createBooking(
+        passenger: 'Amina (Demo)',
+        pickup: 'Hoima City Mall, Main Street',
+        destination: 'Hoima Regional Referral Hospital',
+        service: service.name,
+        paymentMethod: payment.name,
+        fare: service.estimate,
+      );
+      final bookings = (result['state'] as Map<String, dynamic>)['bookings'] as List<dynamic>;
+      if (!mounted) return;
+      setState(() {
+        sharedBookingId = (bookings.first as Map<String, dynamic>)['id'] as String;
+        stage = BookingStage.searching;
+      });
+    } catch (error) {
+      if (mounted) setState(() => bookingError = 'Could not reach the TWALA demo server: $error');
+    } finally {
+      if (mounted) setState(() => submitting = false);
+    }
+  }
+
+  Future<void> refreshSharedBooking() async {
+    if (sharedBookingId == null || submitting) return;
+    setState(() { submitting = true; bookingError = null; });
+    try {
+      final result = await demoApi.snapshot();
+      final bookings = (result['state'] as Map<String, dynamic>)['bookings'] as List<dynamic>;
+      final matches = bookings.cast<Map<String, dynamic>>().where((b) => b['id'] == sharedBookingId);
+      if (matches.isEmpty) throw StateError('Booking not found');
+      final status = matches.first['status'];
+      final nextStage = switch (status) {
+        'searching' => BookingStage.searching,
+        'matched' => BookingStage.matched,
+        'arrived' => BookingStage.arrived,
+        'in_progress' => BookingStage.inProgress,
+        'completed' => BookingStage.complete,
+        _ => BookingStage.searching,
+      };
+      if (mounted) setState(() => stage = nextStage);
+    } catch (error) {
+      if (mounted) setState(() => bookingError = 'Could not refresh booking: $error');
+    } finally {
+      if (mounted) setState(() => submitting = false);
+    }
+  }
 
   void back() {
     if (stage == BookingStage.route || stage.index >= BookingStage.searching.index) return widget.onClose();
@@ -157,6 +218,8 @@ class _BookingPageState extends State<BookingPage> {
   }
 
   void next() {
+    if (stage == BookingStage.review) { createSharedBooking(); return; }
+    if (sharedBookingId != null && stage.index >= BookingStage.searching.index && stage != BookingStage.complete) { refreshSharedBooking(); return; }
     if (stage == BookingStage.complete) return widget.onClose();
     setState(() => stage = BookingStage.values[stage.index + 1]);
   }
@@ -202,7 +265,9 @@ class _BookingPageState extends State<BookingPage> {
           },
         ),
       ),
-      Padding(padding: const EdgeInsets.fromLTRB(20, 8, 20, 18), child: FilledButton(key: const Key('booking-next'), onPressed: next, child: Text(buttonLabel))),
+      if (bookingError != null) Padding(padding: const EdgeInsets.symmetric(horizontal: 20), child: Text(bookingError!, style: const TextStyle(color: Colors.red))),
+      if (sharedBookingId != null) Padding(padding: const EdgeInsets.symmetric(horizontal: 20), child: Text('Shared demo booking: $sharedBookingId')),
+      Padding(padding: const EdgeInsets.fromLTRB(20, 8, 20, 18), child: FilledButton(key: const Key('booking-next'), onPressed: submitting ? null : next, child: Text(submitting ? 'Connecting…' : sharedBookingId != null && stage != BookingStage.complete ? 'Refresh trip status' : buttonLabel))),
     ]);
   }
 
