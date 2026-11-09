@@ -160,7 +160,7 @@ export function verifyPickupCode(state: DemoState, bookingId: string, code: stri
   if (!booking) throw new Error("Booking not found");
   if (booking.status !== "arrived") throw new Error("Captain must arrive before pickup verification");
   if (booking.pickupVerified) throw new Error("Pickup is already verified");
-  if (!/^\\d{4}$/.test(code) || code !== booking.pickupCode) throw new Error("Invalid passenger pickup code");
+  if (!/^\d{4}$/.test(code) || code !== booking.pickupCode) throw new Error("Invalid passenger pickup code");
   return record({...state, bookings: state.bookings.map(b =>
     b.id === bookingId ? {...b, pickupVerified: true} : b)}, `${bookingId}: passenger pickup verified`);
 }
