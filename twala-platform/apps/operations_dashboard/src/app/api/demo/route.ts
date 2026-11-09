@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import {
   acceptBooking, advanceBooking, confirmDeposit, createBooking,
   initialDemoState, requestWithdrawal, resolveWithdrawal,
-  setCaptainVerification, setCaptainOnline, cancelBooking,
+  setCaptainVerification, setCaptainOnline, cancelBooking, verifyPickupCode,
   type Booking, type CaptainStatus, type DemoState,
 } from "@/lib/demo-engine";
 
@@ -68,6 +68,9 @@ export async function POST(request: Request) {
         break;
       case "accept_booking":
         next = acceptBooking(state, str("bookingId"), str("captainId"));
+        break;
+      case "verify_pickup":
+        next = verifyPickupCode(state, str("bookingId"), str("code"));
         break;
       case "advance_booking":
         next = advanceBooking(state, str("bookingId"));
