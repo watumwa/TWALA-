@@ -3,19 +3,24 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 abstract final class TwalaColors {
-  static const orange = Color(0xFFFF6B2C);
-  static const orangeDark = Color(0xFFE84F12);
-  static const orangeSoft = Color(0xFFFFEEE6);
-  static const ink = Color(0xFF132A2F);
-  static const deepGreen = Color(0xFF173F43);
-  static const teal = Color(0xFF0F8F7B);
-  static const mint = Color(0xFFE7F7F1);
-  static const canvas = Color(0xFFF4F7F5);
+  // Legacy aliases retained for existing widgets; all now use TWALA's African palette.
+  static const green = Color(0xFF189E4B);
+  static const gold = Color(0xFFD4A017);
+  static const red = Color(0xFFD62828);
+  static const black = Color(0xFF171717);
+  static const orange = green;
+  static const orangeDark = Color(0xFF117A39);
+  static const orangeSoft = Color(0xFFE9F7EE);
+  static const ink = Color(0xFF171717);
+  static const deepGreen = Color(0xFF151515);
+  static const teal = Color(0xFF168544);
+  static const mint = Color(0xFFE8F6ED);
+  static const canvas = Color(0xFFF7F8F5);
   static const surface = Color(0xFFFFFFFF);
-  static const line = Color(0xFFDCE5E1);
-  static const muted = Color(0xFF667773);
-  static const warning = Color(0xFFF2A51A);
-  static const danger = Color(0xFFD94B45);
+  static const line = Color(0xFFE1E6DF);
+  static const muted = Color(0xFF656B65);
+  static const warning = Color(0xFFD4A017);
+  static const danger = Color(0xFFD62828);
 }
 
 ThemeData buildTwalaTheme() {
@@ -127,7 +132,7 @@ class TwalaWordmark extends StatelessWidget {
             color: TwalaColors.orange,
             borderRadius: BorderRadius.circular(compact ? 12 : 15),
             boxShadow: const [
-              BoxShadow(color: Color(0x38FF6B2C), blurRadius: 18, offset: Offset(0, 7)),
+              BoxShadow(color: Color(0x38189E4B), blurRadius: 18, offset: Offset(0, 7)),
             ],
           ),
           child: const Icon(Icons.route_rounded, color: Colors.white),
@@ -161,7 +166,7 @@ class DemoModeBanner extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.science_outlined, size: 15, color: Color(0xFFFFC7AE)),
+            Icon(Icons.science_outlined, size: 15, color: Color(0xFFEAC56B)),
             SizedBox(width: 7),
             Flexible(
               child: Text(
