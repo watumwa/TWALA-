@@ -1,7 +1,7 @@
 import test from "node:test";
 import type {DemoState} from "./demo-engine.ts";
 import assert from "node:assert/strict";
-import {initialDemoState,createBooking,acceptBooking,advanceBooking,confirmDeposit,requestWithdrawal,resolveWithdrawal,eligibleCaptain} from "./demo-engine.ts";
+import {initialDemoState,createBooking,acceptBooking,advanceBooking,verifyPickupCode,confirmDeposit,requestWithdrawal,resolveWithdrawal,eligibleCaptain} from "./demo-engine.ts";
 const booking=(state:DemoState,extra:Record<string,unknown>={})=>createBooking(state,{passenger:"Demo Passenger",pickup:"Hoima Market",destination:"Hospital",service:"boda",paymentMethod:"cash",fare:10000,pairing:"standard",...extra});
 test("payment selected before matching and captain acceptance required",()=>{
  let s=booking(initialDemoState());
@@ -22,7 +22,10 @@ test("cash trip allocates 10% commission once",()=>{
  let s=booking(initialDemoState());
  const trip=s.bookings[0].id;
  s=acceptBooking(s,trip,"TW-HOI-0241");
- for(let i=0;i<3;i++)s=advanceBooking(s,trip);
+ s=advanceBooking(s,trip);
+ s=verifyPickupCode(s,trip,s.bookings[0].pickupCode!);
+ s=advanceBooking(s,trip);
+ s=advanceBooking(s,trip);
  assert.equal(s.captains[0].outstandingCommission,1000);
  assert.equal(s.transactions.length,1);
  assert.throws(()=>advanceBooking(s,trip),/Invalid trip/);
