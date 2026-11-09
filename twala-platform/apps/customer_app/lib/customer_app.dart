@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'demo_api.dart';
 import 'package:flutter/material.dart';
 import 'package:twala_demo_core/twala_demo_core.dart';
@@ -153,11 +154,15 @@ class _BookingPageState extends State<BookingPage> {
   BookingStage stage = BookingStage.route;
   final TwalaDemoApi demoApi = TwalaDemoApi();
   String? sharedBookingId;
+  Map<String, dynamic>? sharedBooking;
+  Timer? bookingPoll;
+  bool cancelled = false;
   String? bookingError;
   bool submitting = false;
 
   @override
   void dispose() {
+    bookingPoll?.cancel();
     demoApi.close();
     super.dispose();
   }
@@ -177,9 +182,13 @@ class _BookingPageState extends State<BookingPage> {
       final bookings = (result['state'] as Map<String, dynamic>)['bookings'] as List<dynamic>;
       if (!mounted) return;
       setState(() {
-        sharedBookingId = (bookings.first as Map<String, dynamic>)['id'] as String;
+        sharedBooking = bookings.first as Map<String, dynamic>;
+        sharedBookingId = sharedBooking!['id'] as String;
         stage = BookingStage.searching;
+        cancelled = false;
       });
+      bookingPoll?.cancel();
+      bookingPoll = Timer.periodic(const Duration(seconds: 3), (_) => unawaited(refreshSharedBooking(silent: true)));
     } catch (error) {
       if (mounted) setState(() => bookingError = 'Could not reach the TWALA demo server: $error');
     } finally {
@@ -187,15 +196,16 @@ class _BookingPageState extends State<BookingPage> {
     }
   }
 
-  Future<void> refreshSharedBooking() async {
+  Future<void> refreshSharedBooking({bool silent = false}) async {
     if (sharedBookingId == null || submitting) return;
-    setState(() { submitting = true; bookingError = null; });
+    if (!silent) setState(() { submitting = true; bookingError = null; });
     try {
       final result = await demoApi.snapshot();
       final bookings = (result['state'] as Map<String, dynamic>)['bookings'] as List<dynamic>;
       final matches = bookings.cast<Map<String, dynamic>>().where((b) => b['id'] == sharedBookingId);
       if (matches.isEmpty) throw StateError('Booking not found');
       final status = matches.first['status'];
+      if (status == 'cancelled' || status == 'completed') bookingPoll?.cancel();
       final nextStage = switch (status) {
         'searching' => BookingStage.searching,
         'matched' => BookingStage.matched,
@@ -204,20 +214,25 @@ class _BookingPageState extends State<BookingPage> {
         'completed' => BookingStage.complete,
         _ => BookingStage.searching,
       };
-      if (mounted) setState(() => stage = nextStage);
+      if (mounted) setState(() {
+        sharedBooking = matches.first;
+        cancelled = status == 'cancelled';
+        stage = nextStage;
+      });
     } catch (error) {
-      if (mounted) setState(() => bookingError = 'Could not refresh booking: $error');
+      if (!silent && mounted) setState(() => bookingError = 'Could not refresh booking: $error');
     } finally {
-      if (mounted) setState(() => submitting = false);
+      if (!silent && mounted) setState(() => submitting = false);
     }
   }
 
   void back() {
-    if (stage == BookingStage.route || stage.index >= BookingStage.searching.index) return widget.onClose();
+    if (stage == BookingStage.route || stage.index >= BookingStage.searching.index) { bookingPoll?.cancel(); return widget.onClose(); }
     setState(() => stage = BookingStage.values[stage.index - 1]);
   }
 
   void next() {
+    if (cancelled) { bookingPoll?.cancel(); widget.onClose(); return; }
     if (stage == BookingStage.review) { createSharedBooking(); return; }
     if (sharedBookingId != null && stage.index >= BookingStage.searching.index && stage != BookingStage.complete) { refreshSharedBooking(); return; }
     if (stage == BookingStage.complete) return widget.onClose();
@@ -265,9 +280,10 @@ class _BookingPageState extends State<BookingPage> {
           },
         ),
       ),
+      if (cancelled) const Padding(padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8), child: Text('This demo booking was cancelled.', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold))),
       if (bookingError != null) Padding(padding: const EdgeInsets.symmetric(horizontal: 20), child: Text(bookingError!, style: const TextStyle(color: Colors.red))),
       if (sharedBookingId != null) Padding(padding: const EdgeInsets.symmetric(horizontal: 20), child: Text('Shared demo booking: $sharedBookingId')),
-      Padding(padding: const EdgeInsets.fromLTRB(20, 8, 20, 18), child: FilledButton(key: const Key('booking-next'), onPressed: submitting ? null : next, child: Text(submitting ? 'Connecting…' : sharedBookingId != null && stage != BookingStage.complete ? 'Refresh trip status' : buttonLabel))),
+      Padding(padding: const EdgeInsets.fromLTRB(20, 8, 20, 18), child: FilledButton(key: const Key('booking-next'), onPressed: submitting ? null : next, child: Text(cancelled ? 'Close cancelled booking' : submitting ? 'Connecting…' : sharedBookingId != null && stage != BookingStage.complete ? 'Refresh trip status' : buttonLabel))),
     ]);
   }
 
@@ -318,6 +334,16 @@ class _BookingPageState extends State<BookingPage> {
     return ListView(key: ValueKey(stage), padding: const EdgeInsets.fromLTRB(20, 12, 20, 10), children: [
       TwalaMapCanvas(height: 260, progress: arrived ? .9 : .58),
       const SizedBox(height: 16),
+      if (arrived && sharedBooking?['pickupVerified'] != true && sharedBooking?['pickupCode'] != null)
+        Card(child: Padding(padding: const EdgeInsets.all(20), child: Column(children: [
+          const Text('YOUR PICKUP VERIFICATION CODE', style: TextStyle(fontWeight: FontWeight.w800)),
+          const SizedBox(height: 8),
+          Text(sharedBooking!['pickupCode'].toString(), style: Theme.of(context).textTheme.headlineLarge),
+          const SizedBox(height: 6),
+          const Text('Share this demo code with your Captain only when you meet at pickup.', textAlign: TextAlign.center),
+        ]))),
+      if (arrived && sharedBooking?['pickupVerified'] == true)
+        const Card(child: Padding(padding: EdgeInsets.all(18), child: Text('Pickup verified. Your Captain can start the demo trip.'))),
       Card(child: Padding(padding: const EdgeInsets.all(18), child: Column(children: [Row(children: [const CircleAvatar(radius: 29, backgroundColor: TwalaColors.orangeSoft, child: Text('MD', style: TextStyle(color: TwalaColors.orangeDark, fontWeight: FontWeight.w900))), const SizedBox(width: 13), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(demoCaptain.name, style: Theme.of(context).textTheme.titleMedium), const SizedBox(height: 4), Text('${service.providerLabel} • ${demoCaptain.rating} ★ • ${demoCaptain.trips} trips', style: Theme.of(context).textTheme.bodyMedium)])), const CircleIcon(icon: Icons.call_outlined)]), const Divider(height: 28), Row(children: [Icon(service == RideService.boda ? Icons.two_wheeler : Icons.directions_car, color: TwalaColors.teal), const SizedBox(width: 11), Expanded(child: Text(demoCaptain.vehicle, style: const TextStyle(fontWeight: FontWeight.w700))), Text(demoCaptain.registration, style: const TextStyle(fontWeight: FontWeight.w900))]), const SizedBox(height: 14), TwalaStatusPill(label: arrived ? 'Your ${service.providerLabel} has arrived' : '${service.eta} away • ID ${demoCaptain.id}', icon: arrived ? Icons.check_circle_outline : Icons.schedule)]))),
     ]);
   }
